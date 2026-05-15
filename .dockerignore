@@ -1,0 +1,31 @@
+# Keep the build context small. The Dockerfile only needs source + manifests;
+# everything else is either rebuilt or unused inside the container.
+node_modules/
+server/node_modules/
+dist/
+server/dist/
+.vite/
+.git/
+.gitignore
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Test artifacts
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker bits — already in context from the host invocation
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+
+# Pre-built bundle — the Dockerfile builds it from source in stage 1
+dist/

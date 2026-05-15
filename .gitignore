@@ -1,0 +1,20 @@
+# ignore dotfiles except .gitignore and .dockerignore
+.*
+!.gitignore
+!.dockerignore
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Editors / OS / temp
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
