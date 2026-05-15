@@ -160,12 +160,3 @@ server/
 Dockerfile            multi-stage: builds SPA (stage 1), compiles native deps
                       (stage 2), runs in a clean node:22-alpine (stage 3)
 ```
-
-## Relationship to the desktop original
-
-This is a hand-port of the desktop Python + Pygame game at [`../starball`](../starball). Module names mirror the Python originals, with two display-only rename:
-
-- `endless` (Python) ↔ `play` (web, user-facing). Internal persistence key remains `"endless"`.
-- `hotseat` (Python) ↔ `battle` (web, user-facing). Internal persistence key remains `"hotseat"`.
-
-The physics, scoring, and procedural-generation logic translates almost line-for-line. The desktop test suite (68 tests) ported to vitest at 58 tests — the 10-test scaling module is dropped because the browser handles canvas scaling for us — and has since grown to 62 as new gameplay features landed.

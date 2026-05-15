@@ -1,7 +1,5 @@
 // Tunable constants for Starball. Single source of truth for palette, sprite
 // sizes, physics constants, star types, scoring coefficients.
-//
-// Mirrors src/starball/config.py from the Python desktop version.
 
 // ---------------------------------------------------------------------------
 // Display
