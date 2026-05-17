@@ -10,10 +10,6 @@ export const LOGICAL_H = 360;
 export const HUD_H = 40;
 export const PLAYFIELD_H = LOGICAL_H - HUD_H; // 320
 
-export const WINDOW_SCALE = 2;
-export const WINDOW_W = LOGICAL_W * WINDOW_SCALE;
-export const WINDOW_H = LOGICAL_H * WINDOW_SCALE;
-
 export const TARGET_FPS = 60;
 export const PHYSICS_HZ = 120;
 export const PHYSICS_DT = 1.0 / PHYSICS_HZ;

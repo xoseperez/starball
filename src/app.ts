@@ -1,11 +1,10 @@
 // Top-level application: canvas setup, main loop, scene stack, input.
 //
 // Render pipeline:
-//   1. The scene draws to a fixed 640×360 logical canvas.
-//   2. The visible <canvas> is sized to an integer multiple of (640×360) that
-//      fits the viewport — backing buffer matches the displayed pixel grid
-//      exactly, so the browser never has to fractional-scale, and pixels stay
-//      crisp at any window size. Letterbox via flex centering in CSS.
+//   1. The visible <canvas> is sized to the full window at native DPR.
+//   2. The scene draws directly into the context — all game coordinates
+//      (640×360 logical space) are stretched proportionally on both axes
+//      to fill the screen, no letterboxing.
 
 import { BANK } from "./audio";
 import * as config from "./config";
@@ -29,22 +28,24 @@ export class App {
   private scene: Scene;
   private lastTime = 0;
   private running = false;
-  private logicalCanvas: HTMLCanvasElement;
-  private logicalCtx: CanvasRenderingContext2D;
 
   constructor(private canvas: HTMLCanvasElement) {
+    // Make the canvas fill the entire viewport — inline styles can't be
+    // overridden by CSS since we set them after the DOM is ready.
+    Object.assign(this.canvas.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      display: "block",
+      background: "#000",
+    } as Partial<CSSStyleDeclaration>);
+
     const c2d = canvas.getContext("2d");
     if (!c2d) throw new Error("2d context unavailable");
     this.ctx = c2d;
-    this.ctx.imageSmoothingEnabled = false;
-
-    this.logicalCanvas = document.createElement("canvas");
-    this.logicalCanvas.width = config.LOGICAL_W;
-    this.logicalCanvas.height = config.LOGICAL_H;
-    const lctx = this.logicalCanvas.getContext("2d");
-    if (!lctx) throw new Error("logical 2d context unavailable");
-    this.logicalCtx = lctx;
-    this.logicalCtx.imageSmoothingEnabled = false;
+    this.ctx.imageSmoothingEnabled = true;
 
     SETTINGS.load();
     this.scene = new MenuScene();
@@ -61,34 +62,14 @@ export class App {
   }
 
   // -------------------------------------------------------------------------
-  // Resize — pick the largest integer scale that fits, set CSS + backing size
+  // Resize — canvas fills the window at native DPR. Game coordinates (640×360
+  // logical space) stretch proportionally on both axes to fill the screen.
   // -------------------------------------------------------------------------
 
   private resize(): void {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
-
-    // Largest integer N such that (LOGICAL_W*N, LOGICAL_H*N) fits the viewport
-    // when expressed in device pixels.
-    const dvw = vw * dpr;
-    const dvh = vh * dpr;
-    let scale = Math.min(
-      Math.floor(dvw / config.LOGICAL_W),
-      Math.floor(dvh / config.LOGICAL_H),
-    );
-    if (scale < 1) scale = 1;
-
-    const bbw = config.LOGICAL_W * scale;
-    const bbh = config.LOGICAL_H * scale;
-    this.canvas.width = bbw;
-    this.canvas.height = bbh;
-    // CSS size: keep the same aspect, in CSS pixels (= backing / dpr).
-    this.canvas.style.width = `${bbw / dpr}px`;
-    this.canvas.style.height = `${bbh / dpr}px`;
-
-    // canvas re-creates state on width/height change; restore.
-    this.ctx.imageSmoothingEnabled = false;
+    this.canvas.width = Math.round(window.innerWidth * dpr);
+    this.canvas.height = Math.round(window.innerHeight * dpr);
   }
 
   // -------------------------------------------------------------------------
@@ -112,17 +93,15 @@ export class App {
   };
 
   private render(): void {
-    this.scene.render(this.logicalCtx);
-    // Integer-scale blit of the logical surface into the visible canvas.
-    this.ctx.fillStyle = "#000";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.drawImage(
-      this.logicalCanvas,
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height,
-    );
+    // Scale so that the logical 640×360 coordinate space maps to the full
+    // canvas backing buffer. Without this, drawing at x=640 would only fill
+    // a sliver of a full-window DPR-sized canvas.
+    const scaleX = this.canvas.width / config.LOGICAL_W;
+    const scaleY = this.canvas.height / config.LOGICAL_H;
+    this.ctx.save();
+    this.ctx.scale(scaleX, scaleY);
+    this.scene.render(this.ctx);
+    this.ctx.restore();
   }
 
   // -------------------------------------------------------------------------
