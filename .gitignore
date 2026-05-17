@@ -1,7 +1,14 @@
-# ignore dotfiles except .gitignore and .dockerignore
+# ignore dotfiles except .gitignore, .dockerignore, and selected .claude/ tooling
 .*
 !.gitignore
 !.dockerignore
+!.claude/
+!.claude/settings.json
+!.claude/commands/
+!.claude/commands/*
+
+# Keep personal Claude Code config out of the repo
+.claude/settings.local.json
 
 # Dependencies
 node_modules/

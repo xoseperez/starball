@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-15.
 
-Living task tracker grouped by area. Spec lives in [`PRD.md`](PRD.md). Append new rows at the bottom of the relevant section; flip status as work progresses; do not delete completed rows — they are the audit trail.
+Living task tracker grouped by area. Spec lives in [`prd.md`](prd.md). Append new rows at the bottom of the relevant section; flip status as work progresses; do not delete completed rows — they are the audit trail.
 
 ## Status legend
 
@@ -125,4 +125,4 @@ End-to-end manual (when a change touches the wire format):
 
 - Update **Status** in-place as work moves. Don't delete completed rows — they're the audit trail.
 - Add new rows at the bottom of the relevant section. If a row doesn't fit any section, add the section.
-- When picking up work in a fresh session, scan the legend, then this file, then `PRD.md`.
+- When picking up work in a fresh session, scan the legend, then this file, then `prd.md`.

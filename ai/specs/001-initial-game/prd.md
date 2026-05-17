@@ -1,6 +1,6 @@
 # Starball — Product Requirements
 
-High-level definition of the game. Implementation tasks and their status live in [`TASKS.md`](TASKS.md).
+High-level definition of the game. Implementation tasks and their status live in [`tasks.md`](tasks.md).
 
 ## 1. Goal
 
