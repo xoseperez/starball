@@ -38,7 +38,7 @@ const ITEMS: Item[] = [
   // "full" preview is a strong aid — leaderboard fairness. The setting type
   // still allows it (preserved for any user who has it stored), but it can
   // no longer be selected from this menu. Training still has its own T key.
-  { label: "Trajectory preview", key: "trajectory_preview", adjust: cycle(["off", "first_second"]) },
+  { label: "Trajectory preview", key: "trajectory_preview", adjust: cycle(["off", "half_second"]) },
   { label: "Battle rounds", key: "hotseat_rounds", adjust: cycle([4, 6, 8, 10, 12]) },
 ];
 

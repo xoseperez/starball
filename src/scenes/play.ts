@@ -300,7 +300,7 @@ export class PlayScene extends Scene {
     if (this.phase === Phase.AIM) {
       const mode = SETTINGS.get("trajectory_preview");
       if (mode !== "off") {
-        const seconds = mode === "full" ? 2.0 : 1.0;
+        const seconds = mode === "full" ? 2.0 : mode === "half_second" ? 0.5 : 1.0;
         const pts = previewTrajectory(this.map, this.aim.angleDeg, this.aim.powerPct, seconds, Math.floor(60 * seconds));
         ctx.fillStyle = `rgb(${config.SILVER[0]}, ${config.SILVER[1]}, ${config.SILVER[2]})`;
         for (const p of pts) {

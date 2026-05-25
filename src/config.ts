@@ -224,7 +224,7 @@ export const FLIGHT_TIME_PENALTY_FLOOR = 0.1;
 // ---------------------------------------------------------------------------
 
 export type DifficultyCurve = "gentle" | "normal" | "hard";
-export type TrajectoryPreviewMode = "off" | "first_second" | "full";
+export type TrajectoryPreviewMode = "off" | "half_second" | "full";
 
 export interface Settings {
   version: number;
@@ -249,7 +249,7 @@ export const DEFAULT_SETTINGS: Settings = {
   volume_sfx: 1.0,
   volume_music: 0.6,
   fullscreen: false,
-  lives: 3,
+  lives: 5,
   difficulty: "normal",
   trajectory_preview: "off",
   player1_name: "P1",
