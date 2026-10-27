@@ -135,6 +135,8 @@ src/
   input.ts            AimState (turn-based angle + power)
   audio.ts            Web Audio API synthesised SFX (no audio files shipped)
   sprites.ts          procedurally-built sprites painted to HTMLCanvasElement at first use
+  icon.ts             app icon drawn from code; the build writes it as PNGs plus a web manifest
+  png.ts              minimal PNG encoder used by the build for the icons
   render.ts           HUD, text, trail, draw helpers
   persistence.ts      localStorage-backed settings + per-mode top-10 highscores
   api.ts              best-effort REST client for the shared scores backend

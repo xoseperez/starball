@@ -67,7 +67,7 @@ See `.sdd/architecture.md` for the topology and the SPA/API boundary in more det
 - **TypeScript ESM** throughout. `tsx` runs server modules directly — no separate compile step.
 - Fixed logical canvas **640 × 360** (40 px HUD + 320 px playfield; the HUD bar is drawn at the bottom of the screen), stretched over the whole window on both axes at native DPR.
 - **DawnBringer 32** palette only, declared in `src/config.ts`. No inline hex colors elsewhere.
-- **No binary assets.** Sprites are procedurally generated to canvas (`src/sprites.ts`); audio is synthesized via Web Audio.
+- **No binary assets.** Sprites are procedurally generated to canvas (`src/sprites.ts`); audio is synthesized via Web Audio; the app icons and web manifest are rendered at build time (`src/icon.ts`, `vite.config.ts`).
 - Persistence split: `localStorage` (settings + offline cache, versioned schemas), SQLite volume (shared scores).
 - Default to **zero comments**. Add one only when the WHY is non-obvious.
 - Shared modules under `src/` (physics, scoring, mapgen) are imported by *both* client and server — don't fork them.
@@ -88,7 +88,7 @@ Full details: `.sdd/conventions.md`.
 Hard rules from `.sdd/constitution.md`. Bending any of these requires an explicit decision in a feature's `review-response.md`:
 
 - The server's replay validator MUST run the same physics/scoring/mapgen code as the client. Don't fork shared modules.
-- No PNG/JPG/WAV/MP3/TTF in the repo. Procedural sprites + synthesized audio only.
+- No PNG/JPG/WAV/MP3/TTF in the repo. Procedural sprites + synthesized audio only; app icons are generated into the build output.
 - DawnBringer 32 is the only palette.
 - TypeScript ESM end-to-end. No CommonJS, no JS-only modules.
 - Tests are pure-logic. No DOM or canvas rendering tests.

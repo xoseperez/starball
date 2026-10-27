@@ -13,6 +13,7 @@ Non-negotiable rules. Violating any of these requires an explicit, documented de
 
 - **No binary assets in the repo.** No PNG / JPG / GIF / WAV / MP3 / OGG / TTF.
 - Sprites are procedurally generated to canvas. Audio is synthesized via Web Audio.
+- The app icons (PNG) and the web manifest are rendered from code at build time (`src/icon.ts`, `src/png.ts`, the plugin in `vite.config.ts`). They exist only in the build output, never in the repo.
 - **DawnBringer 32** is the only palette. All colors come from `src/config.ts`.
 
 ## Game canvas

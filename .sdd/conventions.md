@@ -14,7 +14,7 @@ How code is written in this repo. Stable across features.
 
 ## Rendering and assets
 
-- Single fixed logical canvas 640 × 360. No PNG / JPG / GIF assets ship — sprites are procedurally generated to `HTMLCanvasElement` at first use in `src/sprites.ts`.
+- Single fixed logical canvas 640 × 360. No PNG / JPG / GIF assets ship — sprites are procedurally generated to `HTMLCanvasElement` at first use in `src/sprites.ts`. The app icons are drawn by `src/icon.ts` (pure code, palette colors) and encoded to PNG at build time by the plugin in `vite.config.ts`.
 - Palette: **DawnBringer 32**, declared in `src/config.ts`. Never inline hex colors outside that file; reference the named palette entries.
 
 ## Audio
