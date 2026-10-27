@@ -9,9 +9,14 @@ import { AimState } from "../input";
 import { generate } from "../mapgen";
 import { RoundEnd, makeShot, step, substepsForFrame } from "../physics";
 import { Random } from "../random";
-import { drawMap, drawText, Trail } from "../render";
+import { drawMap, drawText, Trail, withHudBar, withPlayfield } from "../render";
 import { ScoreAccumulator } from "../scoring";
 import { SETTINGS } from "../settings_store";
+import { TOUCH } from "../touch/mode";
+import { gameplayLayout, type GamePhase } from "../touch/layout-gameplay";
+import { drawHudBand, drawReadouts, type ReadoutValue } from "../touch/draw";
+import { backConfirmRule } from "../touch/back";
+import type { TouchContext, TouchLayout } from "../touch/controls";
 import { Scene, type InputEvent } from "./base";
 
 enum Phase {
@@ -21,6 +26,14 @@ enum Phase {
   ROUND_END = "round_end",
   MATCH_END = "match_end",
 }
+
+const TOUCH_PHASE: Record<Phase, GamePhase> = {
+  [Phase.AIM]: "aim",
+  [Phase.IN_FLIGHT]: "in_flight",
+  [Phase.POST_SHOT]: "post_shot",
+  [Phase.ROUND_END]: "round_end",
+  [Phase.MATCH_END]: "match_end",
+};
 
 const POST_SHOT_S = 1.5;
 const ROUND_END_S = 2.0;
@@ -94,6 +107,14 @@ export class BattleScene extends Scene {
     } else if (this.phase === Phase.MATCH_END && (e.key === "Enter" || e.key === " ")) {
       void this.toMenu();
     }
+  }
+
+  override backNeedsConfirm(): boolean {
+    return backConfirmRule({ scene: "battle", phase: this.phase });
+  }
+
+  override touchLayout(t: TouchContext): TouchLayout {
+    return gameplayLayout("battle", TOUCH_PHASE[this.phase], { backPending: t.backPending });
   }
 
   private async toMenu(): Promise<void> {
@@ -224,61 +245,93 @@ export class BattleScene extends Scene {
       this.map.launcher.powerPct = this.aim.powerPct;
     }
 
-    this.drawHUD(ctx);
-    drawMap(ctx, this.map, {
-      asteroid: this.asteroid,
-      trail: this.trail,
-      pulsePhase: this.pulsePhase,
-      launcherColor: this.currentColor,
+    withPlayfield(ctx, () => {
+      drawMap(ctx, this.map, {
+        asteroid: this.asteroid,
+        trail: this.trail,
+        pulsePhase: this.pulsePhase,
+        launcherColor: this.currentColor,
+      });
+
+      if (this.phase === Phase.AIM) this.drawTurnBanner(ctx);
+      else if (this.phase === Phase.POST_SHOT) this.drawResult(ctx);
+      else if (this.phase === Phase.ROUND_END) this.drawRoundSummary(ctx);
+      else if (this.phase === Phase.MATCH_END) this.drawMatchEnd(ctx);
     });
 
-    if (this.phase === Phase.AIM) this.drawTurnBanner(ctx);
-    else if (this.phase === Phase.POST_SHOT) this.drawResult(ctx);
-    else if (this.phase === Phase.ROUND_END) this.drawRoundSummary(ctx);
-    else if (this.phase === Phase.MATCH_END) this.drawMatchEnd(ctx);
+    this.drawHUD(ctx);
   }
 
   private drawHUD(ctx: CanvasRenderingContext2D): void {
-    // Background bar
-    ctx.fillStyle = `rgb(${config.HUD_BG[0]}, ${config.HUD_BG[1]}, ${config.HUD_BG[2]})`;
-    ctx.fillRect(0, 0, config.LOGICAL_W, config.HUD_H);
-    ctx.strokeStyle = `rgb(${config.DARK_GRAY[0]}, ${config.DARK_GRAY[1]}, ${config.DARK_GRAY[2]})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, config.HUD_H - 0.5);
-    ctx.lineTo(config.LOGICAL_W, config.HUD_H - 0.5);
-    ctx.stroke();
+    if (TOUCH.active) {
+      this.drawTouchHud(ctx);
+      return;
+    }
+    withHudBar(ctx, () => {
+      // Background bar
+      ctx.fillStyle = `rgb(${config.HUD_BG[0]}, ${config.HUD_BG[1]}, ${config.HUD_BG[2]})`;
+      ctx.fillRect(0, 0, config.LOGICAL_W, config.HUD_H);
+      ctx.strokeStyle = `rgb(${config.DARK_GRAY[0]}, ${config.DARK_GRAY[1]}, ${config.DARK_GRAY[2]})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 0.5);
+      ctx.lineTo(config.LOGICAL_W, 0.5);
+      ctx.stroke();
 
-    drawText(ctx, "BATTLE", 6, 4, { size: 14, bold: true, color: config.WHITE });
-    drawText(ctx, `ROUND ${this.round}/${this.totalRounds}`, 6, 22, {
-      size: 12, color: config.PALE_CYAN,
+      drawText(ctx, "BATTLE", 6, 4, { size: 14, bold: true, color: config.WHITE });
+      drawText(ctx, `ROUND ${this.round}/${this.totalRounds}`, 6, 22, {
+        size: 12, color: config.PALE_CYAN,
+      });
+
+      // Two player boxes — name + score on top, shots-remaining dots below.
+      const boxW = 130;
+      const gap = 8;
+      const rightEdge = config.LOGICAL_W - 6;
+      let x = rightEdge - boxW * 2 - gap;
+      for (const p of [1, 2]) {
+        const color = p === this.currentPlayer ? playerColor(p) : config.SILVER;
+        const arrow = p === this.currentPlayer ? "▶" : " ";
+        const name = playerName(p).substring(0, 8);
+        drawText(ctx, `${arrow} ${name}`, x, 4, { size: 14, bold: true, color });
+        // Right-justified score with shots-remaining indicator on the left
+        const remaining = SHOTS_PER_PLAYER_PER_ROUND - this.shotsThisRound[p];
+        const dots: string[] = [];
+        for (let s = 0; s < SHOTS_PER_PLAYER_PER_ROUND; s++) {
+          dots.push(s < remaining ? "●" : "○");
+        }
+        drawText(ctx, dots.join(""), x, 22, { size: 12, color });
+        drawText(ctx, `${this.scores[p - 1]}`, x + boxW - 14, 22, {
+          size: 14, bold: true, color, align: "right",
+        });
+        x += boxW + gap;
+      }
+
+      const aim = `ANG ${Math.round(this.aim.angleDeg).toString().padStart(3)}°  PWR ${this.aim.powerPct.toString().padStart(3)}%`;
+      drawText(ctx, aim, 90, 22, { size: 12, color: this.currentColor });
     });
+  }
 
-    // Two player boxes — name + score on top, shots-remaining dots below.
-    const boxW = 130;
-    const gap = 8;
-    const rightEdge = config.LOGICAL_W - 6;
-    let x = rightEdge - boxW * 2 - gap;
+  private drawTouchHud(ctx: CanvasRenderingContext2D): void {
+    drawHudBand(ctx, this.touchFrame.panels);
+    const values: Record<string, ReadoutValue> = {
+      angle: { text: `${Math.round(this.aim.angleDeg)}°`, color: this.currentColor },
+      power: { text: `${this.aim.powerPct}%`, color: this.currentColor },
+      round_label: { text: "ROUND", color: config.SILVER },
+      round_value: { text: `${this.round}/${this.totalRounds}`, color: config.WHITE },
+    };
     for (const p of [1, 2]) {
       const color = p === this.currentPlayer ? playerColor(p) : config.SILVER;
       const arrow = p === this.currentPlayer ? "▶" : " ";
       const name = playerName(p).substring(0, 8);
-      drawText(ctx, `${arrow} ${name}`, x, 4, { size: 14, bold: true, color });
-      // Right-justified score with shots-remaining indicator on the left
       const remaining = SHOTS_PER_PLAYER_PER_ROUND - this.shotsThisRound[p];
       const dots: string[] = [];
       for (let s = 0; s < SHOTS_PER_PLAYER_PER_ROUND; s++) {
         dots.push(s < remaining ? "●" : "○");
       }
-      drawText(ctx, dots.join(""), x, 22, { size: 12, color });
-      drawText(ctx, `${this.scores[p - 1]}`, x + boxW - 14, 22, {
-        size: 14, bold: true, color, align: "right",
-      });
-      x += boxW + gap;
+      values[`p${p}_name`] = { text: `${arrow} ${name}`, color };
+      values[`p${p}_info`] = { text: `${dots.join("")} ${this.scores[p - 1]}`, color };
     }
-
-    const aim = `ANG ${Math.round(this.aim.angleDeg).toString().padStart(3)}°  PWR ${this.aim.powerPct.toString().padStart(3)}%`;
-    drawText(ctx, aim, 90, 22, { size: 12, color: this.currentColor });
+    drawReadouts(ctx, this.touchFrame.readouts, values);
   }
 
   private drawTurnBanner(ctx: CanvasRenderingContext2D): void {
@@ -366,8 +419,10 @@ export class BattleScene extends Scene {
     drawText(ctx, `${SETTINGS.get("player2_name")} ${this.scores[1]}`, x + 60, y, {
       size: 16, color: config.P2_COLOR, align: "left",
     });
-    drawText(ctx, "[SPACE/ENTER] back to menu", config.LOGICAL_W / 2, config.LOGICAL_H - 24, {
-      size: 12, color: config.SILVER, align: "center",
-    });
+    if (!TOUCH.active) {
+      drawText(ctx, "[SPACE/ENTER] back to menu", config.LOGICAL_W / 2, config.LOGICAL_H - 24, {
+        size: 12, color: config.SILVER, align: "center",
+      });
+    }
   }
 }

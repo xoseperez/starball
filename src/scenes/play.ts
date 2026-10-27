@@ -8,10 +8,15 @@ import { generate } from "../mapgen";
 import { RoundEnd, makeShot, step, substepsForFrame } from "../physics";
 import { Random } from "../random";
 import { qualifiesForHighscore, type ShotTranscript } from "../persistence";
-import { drawHUD, drawMap, drawText, Trail } from "../render";
+import { drawHUD, drawMap, drawText, Trail, withHudBar, withPlayfield } from "../render";
 import { ScoreAccumulator, type ScoreBreakdown } from "../scoring";
 import { SETTINGS } from "../settings_store";
 import { previewTrajectory } from "../trajectory";
+import { backConfirmRule } from "../touch/back";
+import type { TouchContext, TouchLayout } from "../touch/controls";
+import { drawHudBand, drawReadouts } from "../touch/draw";
+import { gameplayLayout, type GamePhase } from "../touch/layout-gameplay";
+import { TOUCH } from "../touch/mode";
 import { Scene, type InputEvent } from "./base";
 
 enum Phase {
@@ -20,6 +25,13 @@ enum Phase {
   POST_SHOT = "post_shot",
   GAME_OVER = "game_over",
 }
+
+const TOUCH_PHASE: Record<Phase, GamePhase> = {
+  [Phase.AIM]: "aim",
+  [Phase.IN_FLIGHT]: "in_flight",
+  [Phase.POST_SHOT]: "post_shot",
+  [Phase.GAME_OVER]: "game_over",
+};
 
 const POST_SHOT_S = 1.5;
 
@@ -92,6 +104,19 @@ export class PlayScene extends Scene {
     } else if (this.phase === Phase.GAME_OVER) {
       if (e.key === "Enter" || e.key === " ") void this.toMenu();
     }
+  }
+
+  override backNeedsConfirm(): boolean {
+    return backConfirmRule({ scene: "play", phase: this.phase });
+  }
+
+  override touchLayout(t: TouchContext): TouchLayout {
+    const lines = this.lastBreakdown ? (this.lastBreakdown.timeMultiplier < 1.0 ? 5 : 4) : 4;
+    return gameplayLayout("play", TOUCH_PHASE[this.phase], {
+      backPending: t.backPending,
+      scored: this.lastResult === RoundEnd.SCORED,
+      overlayLines: lines,
+    });
   }
 
   private async toMenu(): Promise<void> {
@@ -282,20 +307,38 @@ export class PlayScene extends Scene {
       this.map.launcher.powerPct = this.aim.powerPct;
     }
 
+    withPlayfield(ctx, () => this.drawPlayfield(ctx));
+
     let extra = "";
     if (this.phase === Phase.IN_FLIGHT && this.scoreAcc && this.scoreAcc.runningCurvatureScore() > 1) {
       extra = `+${Math.floor(this.scoreAcc.runningCurvatureScore())}`;
     }
-    drawHUD(ctx, {
-      title: "PLAY",
-      angleDeg: this.aim.angleDeg,
-      powerPct: this.aim.powerPct,
-      score: this.score,
-      lives: this.lives,
-      level: this.level,
-      extra,
-    });
+    if (TOUCH.active) {
+      drawHudBand(ctx, this.touchFrame.panels);
+      const livesText = this.lives >= 0 ? `LIVES ${this.lives}` : "LIVES ∞";
+      const info = `LV ${this.level}   ${livesText}`;
+      drawReadouts(ctx, this.touchFrame.readouts, {
+        angle: { text: `${Math.round(this.aim.angleDeg)}°`, color: config.WHITE },
+        power: { text: `${this.aim.powerPct}%`, color: config.WHITE },
+        score: { text: `SCORE ${this.score.toString().padStart(6, "0")}`, color: config.YELLOW },
+        info: { text: extra === "" ? info : `${info}   ${extra}` },
+      });
+    } else {
+      withHudBar(ctx, () =>
+        drawHUD(ctx, {
+          title: "PLAY",
+          angleDeg: this.aim.angleDeg,
+          powerPct: this.aim.powerPct,
+          score: this.score,
+          lives: this.lives,
+          level: this.level,
+          extra,
+        }),
+      );
+    }
+  }
 
+  private drawPlayfield(ctx: CanvasRenderingContext2D): void {
     // Trajectory preview
     if (this.phase === Phase.AIM) {
       const mode = SETTINGS.get("trajectory_preview");
@@ -365,9 +408,11 @@ export class PlayScene extends Scene {
           size: 14, color: config.PALE_CYAN, align: "center", shadow: true,
         });
       }
-      drawText(ctx, "[SPACE] continue", config.LOGICAL_W / 2, config.HUD_H + 100 + lines.length * 16 + 14, {
-        size: 12, color: config.SILVER, align: "center",
-      });
+      if (!TOUCH.active) {
+        drawText(ctx, "[SPACE] continue", config.LOGICAL_W / 2, config.HUD_H + 100 + lines.length * 16 + 14, {
+          size: 12, color: config.SILVER, align: "center",
+        });
+      }
     }
   }
 
@@ -381,8 +426,10 @@ export class PlayScene extends Scene {
     drawText(ctx, `REACHED LEVEL  ${this.level}`, config.LOGICAL_W / 2, config.HUD_H + 144, {
       size: 16, color: config.PALE_CYAN, align: "center",
     });
-    drawText(ctx, "[SPACE] back to menu    [ESC] quit", config.LOGICAL_W / 2, config.HUD_H + 200, {
-      size: 14, color: config.SILVER, align: "center",
-    });
+    if (!TOUCH.active) {
+      drawText(ctx, "[SPACE] back to menu    [ESC] quit", config.LOGICAL_W / 2, config.HUD_H + 200, {
+        size: 14, color: config.SILVER, align: "center",
+      });
+    }
   }
 }

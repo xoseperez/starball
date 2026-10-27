@@ -71,20 +71,23 @@ The Vite dev server proxies `/api/*` to `http://localhost:3000`, so `npm run dev
 
 ## Controls
 
-| Key             | Action                                                  |
-| --------------- | ------------------------------------------------------- |
-| ← / →           | Adjust launch angle (Shift = 5° steps)                  |
-| ↑ / ↓ or + / −  | Adjust power (Shift = 5% steps)                         |
-| Space           | Fire (or select / continue)                             |
-| A               | Abort active shot (no life lost)                        |
-| T               | Toggle trajectory preview (Training)                     |
-| G               | Toggle gravity-field heatmap (Training)                  |
-| N               | New random map (Training)                                |
-| L               | Cycle hand-authored maps (Training)                      |
-| R               | Reset angle / power                                     |
-| Esc             | Back to menu                                            |
+| Key            | Touch                          | Action                                                  |
+| -------------- | ------------------------------ | ------------------------------------------------------- |
+| ← / →          | ↺ / ↻                          | Adjust launch angle (Shift = 5° steps)                  |
+| ↑ / ↓ or + / − | − / +                          | Adjust power (Shift = 5% steps)                         |
+| Space          | FIRE                           | Fire                                                    |
+| Enter / Space  | tap the item, CONTINUE, MENU   | Select / continue                                       |
+| A              | ABORT                          | Abort active shot (no life lost)                        |
+| T              | PREVIEW                        | Toggle trajectory preview (Training)                    |
+| G              | FIELD                          | Toggle gravity-field heatmap (Training)                 |
+| N              | NEW MAP                        | New random map (Training)                               |
+| L              | NEXT MAP                       | Cycle hand-authored maps (Training)                     |
+| R              | RESET                          | Reset angle / power                                     |
+| Esc            | BACK, or the system back       | Back to menu                                            |
 
 Holding an arrow key auto-repeats natively — no special handling needed.
+
+During play the HUD bar sits at the bottom of the screen. On a tablet or phone the touch controls live in that bar, so your hand does not cover the playfield. Holding a button repeats it, and holding it longer switches to the big steps that Shift gives on a keyboard. In menus, tap an item to open it and use ◀ ▶ to change a setting. During a run, BACK (and the system back gesture) first turns into QUIT?, and a second press within 3 seconds leaves. Touch controls only appear when the main pointer is a finger; with a mouse or trackpad the game looks and plays exactly as before.
 
 ## Modes
 

@@ -3,6 +3,10 @@ import * as config from "../config";
 import type { DifficultyCurve } from "../config";
 import { addHighscore, type HighscoreMode, type ShotTranscript } from "../persistence";
 import { drawText } from "../render";
+import { backConfirmRule } from "../touch/back";
+import type { TouchContext, TouchLayout } from "../touch/controls";
+import { INITIALS_CELLS, INITIALS_CELL_W, initialsLayout } from "../touch/layout-menus";
+import { TOUCH } from "../touch/mode";
 import { Scene, type InputEvent } from "./base";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-";
@@ -77,6 +81,20 @@ export class InitialsScene extends Scene {
     }
   }
 
+  override focus(index: number): void {
+    if (this.doneEntry || this.awaitingConfirm) return;
+    this.cursor = Math.max(0, Math.min(2, index));
+  }
+
+  override backNeedsConfirm(): boolean {
+    return backConfirmRule({ scene: "initials", saved: this.doneEntry });
+  }
+
+  override touchLayout(t: TouchContext): TouchLayout {
+    const step = this.doneEntry ? "done" : this.awaitingConfirm ? "confirm" : "editing";
+    return initialsLayout(step, t.backPending);
+  }
+
   private commit(): void {
     const name = this.letters.map((i) => CHARS[i]).join("");
     // Always update the local cache so the table works offline.
@@ -146,52 +164,76 @@ export class InitialsScene extends Scene {
 
     // Initials, each ~64-pt
     const glyphSize = 64;
-    const gap = 20;
-    ctx.font = `bold ${glyphSize}px ui-monospace, monospace`;
-    const widths = this.letters.map((i) => ctx.measureText(CHARS[i]).width);
-    const totalW = widths.reduce((s, w) => s + w, 0) + gap * 2;
-    let x = (config.LOGICAL_W - totalW) / 2;
     const y = 130;
     const editing = !this.doneEntry && !this.awaitingConfirm;
-    for (let i = 0; i < 3; i++) {
-      const ch = CHARS[this.letters[i]];
-      // Editing: cursor letter yellow, others white.
-      // Awaiting confirm: all letters yellow (the whole name is the focus now).
-      // Done: all letters white.
-      let color: config.Color = config.WHITE;
-      if (editing && i === this.cursor) color = config.YELLOW;
-      else if (this.awaitingConfirm) color = config.YELLOW;
-      drawText(ctx, ch, x, y, { size: glyphSize, bold: true, color });
-      if (editing && i === this.cursor) {
-        ctx.strokeStyle = `rgb(${config.YELLOW[0]}, ${config.YELLOW[1]}, ${config.YELLOW[2]})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, y + glyphSize + 2);
-        ctx.lineTo(x + widths[i], y + glyphSize + 2);
-        ctx.stroke();
+    if (TOUCH.active) {
+      for (let i = 0; i < 3; i++) {
+        const ch = CHARS[this.letters[i]];
+        let color: config.Color = config.WHITE;
+        if (editing && i === this.cursor) color = config.YELLOW;
+        else if (this.awaitingConfirm) color = config.YELLOW;
+        drawText(ctx, ch, INITIALS_CELLS[i] + INITIALS_CELL_W / 2, y, {
+          size: glyphSize, bold: true, color, align: "center",
+        });
+        if (editing && i === this.cursor) {
+          ctx.strokeStyle = `rgb(${config.YELLOW[0]}, ${config.YELLOW[1]}, ${config.YELLOW[2]})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(INITIALS_CELLS[i], y + glyphSize + 2);
+          ctx.lineTo(INITIALS_CELLS[i] + INITIALS_CELL_W, y + glyphSize + 2);
+          ctx.stroke();
+        }
       }
-      x += widths[i] + gap;
+    } else {
+      const gap = 20;
+      ctx.font = `bold ${glyphSize}px ui-monospace, monospace`;
+      const widths = this.letters.map((i) => ctx.measureText(CHARS[i]).width);
+      const totalW = widths.reduce((s, w) => s + w, 0) + gap * 2;
+      let x = (config.LOGICAL_W - totalW) / 2;
+      for (let i = 0; i < 3; i++) {
+        const ch = CHARS[this.letters[i]];
+        // Editing: cursor letter yellow, others white.
+        // Awaiting confirm: all letters yellow (the whole name is the focus now).
+        // Done: all letters white.
+        let color: config.Color = config.WHITE;
+        if (editing && i === this.cursor) color = config.YELLOW;
+        else if (this.awaitingConfirm) color = config.YELLOW;
+        drawText(ctx, ch, x, y, { size: glyphSize, bold: true, color });
+        if (editing && i === this.cursor) {
+          ctx.strokeStyle = `rgb(${config.YELLOW[0]}, ${config.YELLOW[1]}, ${config.YELLOW[2]})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, y + glyphSize + 2);
+          ctx.lineTo(x + widths[i], y + glyphSize + 2);
+          ctx.stroke();
+        }
+        x += widths[i] + gap;
+      }
     }
 
     if (editing) {
-      drawText(
-        ctx,
-        "[↑↓] letter   [←→] position   [ENTER] next",
-        config.LOGICAL_W / 2,
-        config.LOGICAL_H - 30,
-        { size: 16, color: config.SILVER, align: "center" },
-      );
+      if (!TOUCH.active) {
+        drawText(
+          ctx,
+          "[↑↓] letter   [←→] position   [ENTER] next",
+          config.LOGICAL_W / 2,
+          config.LOGICAL_H - 30,
+          { size: 16, color: config.SILVER, align: "center" },
+        );
+      }
     } else if (this.awaitingConfirm) {
-      drawText(ctx, "submit this name?", config.LOGICAL_W / 2, config.LOGICAL_H - 56, {
+      drawText(ctx, "submit this name?", config.LOGICAL_W / 2, TOUCH.active ? 256 : config.LOGICAL_H - 56, {
         size: 14, color: config.PALE_CYAN, align: "center",
       });
-      drawText(
-        ctx,
-        "[ENTER] confirm   [BACKSPACE] edit",
-        config.LOGICAL_W / 2,
-        config.LOGICAL_H - 30,
-        { size: 16, color: config.SILVER, align: "center" },
-      );
+      if (!TOUCH.active) {
+        drawText(
+          ctx,
+          "[ENTER] confirm   [BACKSPACE] edit",
+          config.LOGICAL_W / 2,
+          config.LOGICAL_H - 30,
+          { size: 16, color: config.SILVER, align: "center" },
+        );
+      }
     } else {
       const name = this.letters.map((i) => CHARS[i]).join("");
       const rankText = this.rank > 0 ? `${name}  ranked #${this.rank}` : `${name}  (no rank)`;

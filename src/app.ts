@@ -11,6 +11,21 @@ import * as config from "./config";
 import { SETTINGS } from "./settings_store";
 import { MenuScene } from "./scenes/menu";
 import { Scene, type InputEvent } from "./scenes/base";
+import { BackConfirm, BackGuard } from "./touch/back";
+import {
+  EMPTY_LAYOUT,
+  type Emit,
+  type TouchContext,
+  type TouchLayout,
+} from "./touch/controls";
+import { isPortrait } from "./touch/device";
+import { dispatch } from "./touch/dispatch";
+import { applyHistoryOps, currentGuardIndex, onHistoryPop } from "./touch/dom-history";
+import { installTouchInput } from "./touch/dom-input";
+import { drawControls, drawRotatePrompt } from "./touch/draw";
+import { renderTransform, type RenderTransform } from "./touch/geometry";
+import { TOUCH } from "./touch/mode";
+import { PointerTracker } from "./touch/pointers";
 
 const KEYS_THAT_BLOCK_DEFAULT = new Set([
   "ArrowLeft",
@@ -28,6 +43,11 @@ export class App {
   private scene: Scene;
   private lastTime = 0;
   private running = false;
+  private transform: RenderTransform = renderTransform(config.LOGICAL_W, config.LOGICAL_H, 1);
+  private readonly tracker = new PointerTracker();
+  private readonly backConfirm = new BackConfirm();
+  private readonly backGuard = new BackGuard();
+  private layout: TouchLayout = EMPTY_LAYOUT;
 
   constructor(private canvas: HTMLCanvasElement) {
     // Make the canvas fill the entire viewport — inline styles can't be
@@ -53,6 +73,7 @@ export class App {
     this.resize();
     window.addEventListener("resize", () => this.resize());
     this.installInput();
+    this.installTouch();
   }
 
   run(): void {
@@ -68,8 +89,9 @@ export class App {
 
   private resize(): void {
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = Math.round(window.innerWidth * dpr);
-    this.canvas.height = Math.round(window.innerHeight * dpr);
+    this.transform = renderTransform(window.innerWidth, window.innerHeight, dpr);
+    this.canvas.width = this.transform.canvasW;
+    this.canvas.height = this.transform.canvasH;
   }
 
   // -------------------------------------------------------------------------
@@ -82,26 +104,61 @@ export class App {
     this.lastTime = now;
     if (dt > 0.1) dt = 0.1;
 
+    if (TOUCH.active && !this.blocked()) {
+      for (const e of this.tracker.tick(now, this.layout)) this.emit(e);
+    }
+
     this.scene.update(dt);
 
     if (this.scene.nextScene !== null) {
       this.scene = this.scene.nextScene;
+      this.backConfirm.reset();
+      this.tracker.cancelAll();
+      applyHistoryOps(this.backGuard.onSceneChange(this.scene.isRoot));
     }
 
+    this.refreshLayout(now);
     this.render();
     requestAnimationFrame(this.tick);
   };
 
   private render(): void {
-    // Scale so that the logical 640×360 coordinate space maps to the full
-    // canvas backing buffer. Without this, drawing at x=640 would only fill
-    // a sliver of a full-window DPR-sized canvas.
-    const scaleX = this.canvas.width / config.LOGICAL_W;
-    const scaleY = this.canvas.height / config.LOGICAL_H;
     this.ctx.save();
-    this.ctx.scale(scaleX, scaleY);
+    this.ctx.scale(this.transform.scaleX, this.transform.scaleY);
     this.scene.render(this.ctx);
+    if (TOUCH.active) drawControls(this.ctx, this.layout, this.tracker.pressedIds());
+    if (this.blocked()) drawRotatePrompt(this.ctx);
     this.ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Touch state
+  // -------------------------------------------------------------------------
+
+  private refreshLayout(now: number): void {
+    this.layout = TOUCH.active ? this.scene.touchLayout(this.context(now)) : EMPTY_LAYOUT;
+    this.scene.touchFrame = this.layout;
+  }
+
+  private context(now: number): TouchContext {
+    return {
+      backPending: this.backConfirm.pending(now),
+      device: TOUCH.device,
+    };
+  }
+
+  private blocked(): boolean {
+    return TOUCH.device && isPortrait(window.innerWidth, window.innerHeight);
+  }
+
+  private requestBack(): void {
+    if (this.backConfirm.request(performance.now(), this.scene.backNeedsConfirm()) === "act") {
+      this.scene.handleEvent({ key: "Escape", shift: false });
+    }
+  }
+
+  private emit(e: Emit): void {
+    dispatch(this.scene, e, { back: () => this.requestBack() });
   }
 
   // -------------------------------------------------------------------------
@@ -112,6 +169,24 @@ export class App {
     window.addEventListener("keydown", (e) => {
       BANK.ensure();
       BANK.resume();
+
+      const wasActive = TOUCH.active;
+      TOUCH.onKey();
+      if (wasActive) this.tracker.cancelAll();
+      if (this.blocked()) {
+        e.preventDefault();
+        return;
+      }
+
+      if (TOUCH.device) {
+        applyHistoryOps(this.backGuard.onActivation());
+        // Android turns an unhandled Escape into the system Back, which closes the page.
+        if (e.key === "Escape") {
+          e.preventDefault();
+          if (this.backGuard.onEscapeKey(performance.now()).back) this.requestBack();
+          return;
+        }
+      }
 
       if (KEYS_THAT_BLOCK_DEFAULT.has(e.key)) {
         e.preventDefault();
@@ -129,5 +204,43 @@ export class App {
     };
     window.addEventListener("pointerdown", unlockAudio, { once: false });
     window.addEventListener("touchstart", unlockAudio, { once: false });
+  }
+
+  private installTouch(): void {
+    const input = installTouchInput(this.canvas, {
+      down: (id, x, y) => {
+        const now = performance.now();
+        const wasActive = TOUCH.active;
+        TOUCH.onPointer();
+        applyHistoryOps(this.backGuard.onActivation());
+        if (this.blocked()) return;
+        if (!wasActive) this.refreshLayout(now);
+        for (const e of this.tracker.down(id, x, y, now, this.layout)) this.emit(e);
+      },
+      move: (id, x, y) => this.tracker.move(id, x, y, this.layout),
+      up: (id, x, y) => {
+        if (this.blocked()) {
+          this.tracker.cancel(id);
+          return;
+        }
+        for (const e of this.tracker.up(id, x, y, this.layout)) this.emit(e);
+      },
+      cancel: (id) => this.tracker.cancel(id),
+      cancelAll: () => this.tracker.cancelAll(),
+      deviceChanged: (isTouch) => {
+        TOUCH.setDevice(isTouch);
+        applyHistoryOps(this.backGuard.setEnabled(isTouch));
+        this.tracker.cancelAll();
+      },
+    });
+
+    TOUCH.setDevice(input.isTouch());
+    applyHistoryOps(this.backGuard.setEnabled(TOUCH.device));
+    applyHistoryOps(this.backGuard.onLoad(currentGuardIndex()));
+    onHistoryPop((isGuardEntry) => {
+      const r = this.backGuard.onPopState(performance.now(), isGuardEntry);
+      applyHistoryOps(r.ops);
+      if (r.back) this.requestBack();
+    });
   }
 }

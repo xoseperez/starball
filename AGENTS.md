@@ -65,7 +65,7 @@ See `.sdd/architecture.md` for the topology and the SPA/API boundary in more det
 ## 4. Code style
 
 - **TypeScript ESM** throughout. `tsx` runs server modules directly — no separate compile step.
-- Fixed logical canvas **640 × 360** (40 px HUD + 320 px playfield). Integer-factor scaling only.
+- Fixed logical canvas **640 × 360** (40 px HUD + 320 px playfield; the HUD bar is drawn at the bottom of the screen), stretched over the whole window on both axes at native DPR.
 - **DawnBringer 32** palette only, declared in `src/config.ts`. No inline hex colors elsewhere.
 - **No binary assets.** Sprites are procedurally generated to canvas (`src/sprites.ts`); audio is synthesized via Web Audio.
 - Persistence split: `localStorage` (settings + offline cache, versioned schemas), SQLite volume (shared scores).
@@ -92,7 +92,7 @@ Hard rules from `.sdd/constitution.md`. Bending any of these requires an explici
 - DawnBringer 32 is the only palette.
 - TypeScript ESM end-to-end. No CommonJS, no JS-only modules.
 - Tests are pure-logic. No DOM or canvas rendering tests.
-- The project does not ship: mobile/touch input, accounts/OAuth, telemetry, online multiplayer, replay playback, level editor, i18n.
+- The project does not ship: accounts/OAuth, telemetry, online multiplayer, replay playback, level editor, i18n.
 
 ## Where to find what
 

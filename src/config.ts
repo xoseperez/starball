@@ -70,6 +70,11 @@ export const DARK_GRAY = PALETTE[24];
 export const CHARCOAL = PALETTE[25];
 export const PURPLE = PALETTE[26];
 export const SILVER = PALETTE[22];
+export const DEEP_BLUE = PALETTE[15];
+export const ROYAL_BLUE = PALETTE[17];
+export const ROSE = PALETTE[28];
+export const DARK_GREEN = PALETTE[11];
+export const GREEN = PALETTE[10];
 
 export const BG_COLOR = PALETTE[1]; // dark blue-purple — space
 export const HUD_BG = PALETTE[14];  // dark slate
@@ -259,3 +264,24 @@ export const DEFAULT_SETTINGS: Settings = {
   shift_multiplier: 5,
   hotseat_rounds: 4,  // even so each player starts the same number of times
 };
+
+export const TOUCH_MIN_W = 28;
+export const TOUCH_MIN_H = 24;
+export const TOUCH_MIN_GAP = 4;
+export const TOUCH_REPEAT_DELAY_MS = 400;
+export const TOUCH_REPEAT_INTERVAL_MS = 60;
+export const TOUCH_COARSE_AFTER_MS = 1200;
+export const TOUCH_MAX_STEPS_PER_TICK = 3;
+export const BACK_CONFIRM_MS = 3000;
+export const BACK_KEY_DEDUPE_MS = 500;
+export const BACK_GUARD_DEPTH = 2;
+export const MONO_ADVANCE = 0.6;
+export const TOUCH_WARN = RED;
+export const TOUCH_BUTTON = DEEP_BLUE;
+export const TOUCH_BUTTON_PRESSED = ROYAL_BLUE;
+export const TOUCH_PANEL = BG_COLOR;
+export const TOUCH_PRIMARY = RED;
+export const TOUCH_PRIMARY_PRESSED = ROSE;
+export const TOUCH_ON = DARK_GREEN;
+export const TOUCH_ON_PRESSED = GREEN;
+export const TOUCH_TEXT = WHITE;

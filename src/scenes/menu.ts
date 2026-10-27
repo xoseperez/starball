@@ -2,6 +2,9 @@ import * as config from "../config";
 import { BANK } from "../audio";
 import { drawText } from "../render";
 import { Scene, type InputEvent } from "./base";
+import { TOUCH } from "../touch/mode";
+import { menuLayout } from "../touch/layout-menus";
+import type { TouchContext, TouchLayout } from "../touch/controls";
 
 interface MenuItem {
   label: string;
@@ -11,6 +14,7 @@ interface MenuItem {
 export class MenuScene extends Scene {
   private items: MenuItem[];
   private cursor = 0;
+  override readonly isRoot = true;
 
   constructor() {
     super();
@@ -35,6 +39,14 @@ export class MenuScene extends Scene {
       BANK.play("menu_select");
       this.items[this.cursor].action();
     }
+  }
+
+  override focus(index: number): void {
+    if (index >= 0 && index < this.items.length) this.cursor = index;
+  }
+
+  override touchLayout(_t: TouchContext): TouchLayout {
+    return menuLayout(this.items.length);
   }
 
   override render(ctx: CanvasRenderingContext2D): void {
@@ -75,13 +87,15 @@ export class MenuScene extends Scene {
       });
     }
 
-    drawText(
-      ctx,
-      "[↑↓] navigate   [ENTER] select",
-      config.LOGICAL_W / 2,
-      config.LOGICAL_H - 24,
-      { size: 11, color: config.SILVER, align: "center" },
-    );
+    if (!TOUCH.active) {
+      drawText(
+        ctx,
+        "[↑↓] navigate   [ENTER] select",
+        config.LOGICAL_W / 2,
+        config.LOGICAL_H - 24,
+        { size: 11, color: config.SILVER, align: "center" },
+      );
+    }
   }
 
   private async openPlay(): Promise<void> {

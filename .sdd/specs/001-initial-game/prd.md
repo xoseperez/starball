@@ -8,15 +8,15 @@ A polished single-page browser game that captures the feel of late-80s arcade ph
 
 ## 2. Target user
 
-The author and friends. A single player (or a couch pair) who enjoys physics-puzzle / arcade games. No accounts, no telemetry, no ads. Plays from a desktop browser; keyboard only.
+The author and friends. A single player (or a couch pair) who enjoys physics-puzzle / arcade games. No accounts, no telemetry, no ads. Plays from a desktop browser with the keyboard, or from a tablet by touch (see `specs/004-touch-input/`).
 
 ## 3. Game elements
 
 ### 3.1 Canvas and HUD layout
 
-- Logical canvas: **640 × 360**. Fixed **640 × 40 HUD band at the top** showing score, lives, level, angle and power readouts, mode/player name.
-- **Playfield rect: 640 × 320** (below the HUD). All physics, walls, stars, goal, and launcher live here.
-- Window: scales by the largest integer factor that fits the viewport (`min(host_w / 640, host_h / 360)`), letterboxed by CSS centering. HiDPI scaled by `devicePixelRatio`.
+- Logical canvas: **640 × 360**. Fixed **640 × 40 HUD band** (drawn at the bottom of the screen since `004-touch-input`) showing score, lives, level, angle and power readouts, mode/player name.
+- **Playfield rect: 640 × 320** (logical y 40..360; drawn above the HUD bar on screen). All physics, walls, stars, goal, and launcher live here.
+- Window: originally integer-scaled and letterboxed; the canvas now stretches over the whole window on both axes at native `devicePixelRatio` (see `004-touch-input`).
 
 ### 3.2 Palette and sprites
 
@@ -66,6 +66,8 @@ Difficulty introduces star types progressively (see §5).
 | Esc            | Back to menu                                                   |
 
 Browser auto-repeat handles key holds; no special input plumbing.
+
+On touch devices every key action also has an on-screen control; see `specs/004-touch-input/spec.md` § Controls per scene.
 
 Training-only:
 
@@ -193,14 +195,13 @@ Reference sheet accessible from the main menu. Renders each star's actual in-gam
 
 ## 9. Settings & accessibility
 
-- All gameplay is keyboard-only.
+- All gameplay works with the keyboard, and on touch devices with on-screen controls.
 - Holding an arrow auto-repeats via the browser.
 - Sound can be muted from the settings (master volume 0).
 - No localization; English only.
 
 ## 10. Non-goals (v1)
 
-- Mobile / touch input.
 - Server-side accounts, OAuth, or per-user records (leaderboards are name-only by 3-letter initials).
 - Online multiplayer.
 - Hand-authored level packs beyond the 5 test maps shipped (used by procgen fallback and by Training's `L` cycle).

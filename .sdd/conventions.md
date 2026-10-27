@@ -24,7 +24,7 @@ How code is written in this repo. Stable across features.
 ## Tests
 
 - All under `tests/`, run with `npm test` (Vitest).
-- Pure logic only — physics, scoring, mapgen, input, persistence. **No DOM tests, no canvas tests.** If a behavior cannot be tested as a pure function, restructure until it can.
+- Pure logic only — physics, scoring, mapgen, input, touch, persistence. **No DOM tests, no canvas tests.** If a behavior cannot be tested as a pure function, restructure until it can.
 - Treat the existing invariants as load-bearing — they're how we know client and server replay stay in sync.
 
 ## Commits

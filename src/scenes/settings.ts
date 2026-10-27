@@ -3,7 +3,10 @@
 import * as config from "../config";
 import { drawText } from "../render";
 import { SETTINGS } from "../settings_store";
+import { TOUCH } from "../touch/mode";
+import { settingsLayout, settingsRowY } from "../touch/layout-menus";
 import type { Settings } from "../config";
+import type { TouchContext, TouchLayout } from "../touch/controls";
 import { Scene, type InputEvent } from "./base";
 
 type AdjustFn = (current: unknown, direction: number) => unknown;
@@ -69,6 +72,14 @@ export class SettingsScene extends Scene {
     }
   }
 
+  override focus(index: number): void {
+    if (index >= 0 && index < ITEMS.length) this.cursor = index;
+  }
+
+  override touchLayout(t: TouchContext): TouchLayout {
+    return settingsLayout(ITEMS.length, t.backPending);
+  }
+
   private async toMenu(): Promise<void> {
     const { MenuScene } = await import("./menu");
     this.nextScene = new MenuScene();
@@ -89,18 +100,18 @@ export class SettingsScene extends Scene {
       const item = ITEMS[i];
       const isCursor = i === this.cursor;
       const color = isCursor ? config.YELLOW : config.PALE_CYAN;
-      const y = startY + i * 24;
+      const y = TOUCH.active ? settingsRowY(i) : startY + i * 24;
       if (isCursor) {
         drawText(ctx, ">", col1X - 16, y, { size: 16, bold: true, color: config.YELLOW });
       }
       drawText(ctx, item.label, col1X, y, { size: 16, color });
       const val = SETTINGS.get(item.key);
       const valStr = fmt(item.key, val);
-      if (isCursor) {
+      if (isCursor && !TOUCH.active) {
         drawText(ctx, "<", col2X - 14, y, { size: 16, bold: true, color: config.YELLOW });
       }
       drawText(ctx, valStr, col2X, y, { size: 16, color });
-      if (isCursor) {
+      if (isCursor && !TOUCH.active) {
         // measure width to place the > to the right
         ctx.font = `16px ui-monospace, monospace`;
         const w = ctx.measureText(valStr).width;
@@ -108,12 +119,14 @@ export class SettingsScene extends Scene {
       }
     }
 
-    drawText(
-      ctx,
-      "[↑↓] item   [←→] adjust   [ENTER/ESC] back",
-      config.LOGICAL_W / 2,
-      config.LOGICAL_H - 24,
-      { size: 11, color: config.SILVER, align: "center" },
-    );
+    if (!TOUCH.active) {
+      drawText(
+        ctx,
+        "[↑↓] item   [←→] adjust   [ENTER/ESC] back",
+        config.LOGICAL_W / 2,
+        config.LOGICAL_H - 24,
+        { size: 11, color: config.SILVER, align: "center" },
+      );
+    }
   }
 }

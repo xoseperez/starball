@@ -39,6 +39,7 @@ export interface TextOpts {
   align?: CanvasTextAlign;
   baseline?: CanvasTextBaseline;
   shadow?: boolean;
+  maxWidth?: number;
 }
 
 export function drawText(
@@ -56,10 +57,12 @@ export function drawText(
   ctx.textBaseline = opts.baseline ?? "top";
   if (opts.shadow) {
     ctx.fillStyle = cssColor(config.BLACK);
-    ctx.fillText(text, x + 1, y + 1);
+    if (opts.maxWidth === undefined) ctx.fillText(text, x + 1, y + 1);
+    else ctx.fillText(text, x + 1, y + 1, opts.maxWidth);
   }
   ctx.fillStyle = cssColor(color);
-  ctx.fillText(text, x, y);
+  if (opts.maxWidth === undefined) ctx.fillText(text, x, y);
+  else ctx.fillText(text, x, y, opts.maxWidth);
 }
 
 export function textWidth(ctx: CanvasRenderingContext2D, text: string, size: number, bold = false): number {
@@ -178,6 +181,21 @@ export function drawAsteroid(ctx: CanvasRenderingContext2D, a: Asteroid): void {
   ctx.drawImage(sprite, Math.round(a.x - half), Math.round(a.y - half));
 }
 
+// Logic keeps the playfield at y = HUD_H (physics, map generation and the server replay rely on it); on screen the bar sits below it.
+export function withPlayfield(ctx: CanvasRenderingContext2D, draw: () => void): void {
+  ctx.save();
+  ctx.translate(0, -config.HUD_H);
+  draw();
+  ctx.restore();
+}
+
+export function withHudBar(ctx: CanvasRenderingContext2D, draw: () => void): void {
+  ctx.save();
+  ctx.translate(0, config.PLAYFIELD_H);
+  draw();
+  ctx.restore();
+}
+
 // ---------------------------------------------------------------------------
 // HUD band
 // ---------------------------------------------------------------------------
@@ -198,8 +216,8 @@ export function drawHUD(ctx: CanvasRenderingContext2D, opts: HUDOpts): void {
   ctx.strokeStyle = cssColor(config.DARK_GRAY);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, config.HUD_H - 0.5);
-  ctx.lineTo(config.LOGICAL_W, config.HUD_H - 0.5);
+  ctx.moveTo(0, 0.5);
+  ctx.lineTo(config.LOGICAL_W, 0.5);
   ctx.stroke();
 
   // Left: title + angle/power

@@ -9,6 +9,9 @@ import * as config from "../config";
 import type { StarType } from "../config";
 import { drawText } from "../render";
 import { getStarSprite } from "../sprites";
+import { TOUCH } from "../touch/mode";
+import { helpLayout } from "../touch/layout-menus";
+import type { TouchContext, TouchLayout } from "../touch/controls";
 import { Scene, type InputEvent } from "./base";
 
 interface Row {
@@ -45,10 +48,12 @@ const ROWS: readonly Row[] = [
   },
 ];
 
-const PAGE_COUNT = 2;
-
 export class HelpScene extends Scene {
   private page = 0;
+
+  private pageCount(): number {
+    return TOUCH.device ? 3 : 2;
+  }
 
   override handleEvent(e: InputEvent): void {
     if (e.key === "Enter" || e.key === "Escape" || e.key === "Backspace" || e.key === " ") {
@@ -56,9 +61,9 @@ export class HelpScene extends Scene {
       return;
     }
     if (e.key === "ArrowLeft") {
-      this.page = (this.page - 1 + PAGE_COUNT) % PAGE_COUNT;
+      this.page = (this.page - 1 + this.pageCount()) % this.pageCount();
     } else if (e.key === "ArrowRight") {
-      this.page = (this.page + 1) % PAGE_COUNT;
+      this.page = (this.page + 1) % this.pageCount();
     }
   }
 
@@ -67,15 +72,22 @@ export class HelpScene extends Scene {
     this.nextScene = new MenuScene();
   }
 
+  override touchLayout(t: TouchContext): TouchLayout {
+    return helpLayout(t.backPending);
+  }
+
   override render(ctx: CanvasRenderingContext2D): void {
     ctx.fillStyle = `rgb(${config.BG_COLOR[0]}, ${config.BG_COLOR[1]}, ${config.BG_COLOR[2]})`;
     ctx.fillRect(0, 0, config.LOGICAL_W, config.LOGICAL_H);
 
+    if (this.page >= this.pageCount()) this.page = 0;
+
     if (this.page === 0) this.renderStarsPage(ctx);
-    else this.renderScoringPage(ctx);
+    else if (this.page === 1) this.renderScoringPage(ctx);
+    else this.renderControlsPage(ctx);
 
     this.renderPageIndicator(ctx);
-    this.renderFooter(ctx);
+    if (!TOUCH.active) this.renderFooter(ctx);
   }
 
   private renderStarsPage(ctx: CanvasRenderingContext2D): void {
@@ -167,12 +179,43 @@ export class HelpScene extends Scene {
     );
   }
 
+  private renderControlsPage(ctx: CanvasRenderingContext2D): void {
+    drawText(ctx, "TOUCH CONTROLS", config.LOGICAL_W / 2, 24, {
+      size: 22, bold: true, color: config.YELLOW, align: "center",
+    });
+    drawText(ctx, "what each button does", config.LOGICAL_W / 2, 44, {
+      size: 11, color: config.PALE_CYAN, align: "center",
+    });
+
+    const rows: Array<[string, string]> = [
+      ["MENUS", "tap an item to open it; ◀ ▶ change a setting"],
+      ["AIM", "↺ ↻ turn the launcher, − + change power"],
+      ["HOLD", "hold a button to repeat; keep holding for big steps"],
+      ["FIRE", "launch the shot; ABORT stops it in flight"],
+      ["PLAY", "RESET puts angle and power back"],
+      ["TRAINING", "NEW MAP, NEXT MAP, PREVIEW and FIELD"],
+      ["BACK", "during a run it asks QUIT? first; tap again to leave"],
+      ["SYSTEM", "the system back gesture works like BACK"],
+    ];
+
+    for (let i = 0; i < rows.length; i++) {
+      const [label, text] = rows[i];
+      const y = 76 + 30 * i;
+      drawText(ctx, label, 40, y, {
+        size: 13, bold: true, color: config.YELLOW,
+      });
+      drawText(ctx, text, 150, y, {
+        size: 11, color: config.PALE_CYAN,
+      });
+    }
+  }
+
   private renderPageIndicator(ctx: CanvasRenderingContext2D): void {
     const y = config.LOGICAL_H - 30;
     const cx = config.LOGICAL_W / 2;
     const gap = 14;
-    for (let i = 0; i < PAGE_COUNT; i++) {
-      const x = cx + (i - (PAGE_COUNT - 1) / 2) * gap;
+    for (let i = 0; i < this.pageCount(); i++) {
+      const x = cx + (i - (this.pageCount() - 1) / 2) * gap;
       const color = i === this.page ? config.YELLOW : config.DARK_GRAY;
       ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
       ctx.beginPath();

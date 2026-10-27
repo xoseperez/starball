@@ -17,7 +17,7 @@ Non-negotiable rules. Violating any of these requires an explicit, documented de
 
 ## Game canvas
 
-- Logical canvas is fixed at **640 × 360** (40 px HUD + 320 px playfield). Scaling is integer-factor only.
+- Logical canvas is fixed at **640 × 360** (40 px HUD + 320 px playfield; the HUD bar is drawn at the bottom of the screen). It is stretched over the whole window on both axes, at native device pixel ratio.
 
 ## Physics integrity
 
@@ -40,7 +40,6 @@ Non-negotiable rules. Violating any of these requires an explicit, documented de
 
 The project intentionally does **not** ship:
 
-- Mobile / touch input
 - Server-side user accounts, OAuth, telemetry, or ads
 - Online multiplayer
 - Replay playback (server re-runs physics for validation only; clients don't visualize others' runs)

@@ -8,8 +8,12 @@ import { AimState } from "../input";
 import { generate } from "../mapgen";
 import { RoundEnd, makeShot, step, substepsForFrame } from "../physics";
 import { Random } from "../random";
-import { drawGravityField, drawHUD, drawMap, drawText, Trail } from "../render";
+import { drawGravityField, drawHUD, drawMap, drawText, Trail, withHudBar, withPlayfield } from "../render";
 import { previewTrajectory } from "../trajectory";
+import type { TouchContext, TouchLayout } from "../touch/controls";
+import { drawHudBand, drawReadouts } from "../touch/draw";
+import { gameplayLayout } from "../touch/layout-gameplay";
+import { TOUCH } from "../touch/mode";
 import { Scene, type InputEvent } from "./base";
 
 enum Phase {
@@ -73,6 +77,14 @@ export class SandboxScene extends Scene {
     } else if (this.phase === Phase.IN_FLIGHT) {
       if (e.key === " " || e.key.toLowerCase() === "a") this.reset();
     }
+  }
+
+  override touchLayout(t: TouchContext): TouchLayout {
+    return gameplayLayout("training", this.phase === Phase.AIM ? "aim" : "in_flight", {
+      backPending: t.backPending,
+      previewOn: this.previewOn,
+      fieldOn: this.fieldOn,
+    });
   }
 
   private async toMenu(): Promise<void> {
@@ -153,55 +165,70 @@ export class SandboxScene extends Scene {
       this.map.launcher.powerPct = this.aim.powerPct;
     }
 
-    drawHUD(ctx, {
-      title: `TRAINING  L${this.map.level}`,
-      angleDeg: this.aim.angleDeg,
-      powerPct: this.aim.powerPct,
-      score: 0,
-      lives: null,
-      level: null,
-      extra: this.previewOn ? "preview ON" : "preview OFF",
-    });
+    withPlayfield(ctx, () => {
+      if (this.fieldOn) {
+        drawGravityField(ctx, this.map.stars);
+      }
 
-    if (this.fieldOn) {
-      drawGravityField(ctx, this.map.stars);
-    }
-
-    if (this.previewOn && this.phase === Phase.AIM) {
-      const pts = previewTrajectory(this.map, this.aim.angleDeg, this.aim.powerPct, 2.0, 80);
-      ctx.fillStyle = `rgb(${config.SILVER[0]}, ${config.SILVER[1]}, ${config.SILVER[2]})`;
-      for (const p of pts) {
-        const ix = Math.floor(p.x);
-        const iy = Math.floor(p.y);
-        if (ix >= 0 && ix < config.LOGICAL_W && iy >= 0 && iy < config.LOGICAL_H) {
-          ctx.fillRect(ix, iy, 1, 1);
+      if (this.previewOn && this.phase === Phase.AIM) {
+        const pts = previewTrajectory(this.map, this.aim.angleDeg, this.aim.powerPct, 2.0, 80);
+        ctx.fillStyle = `rgb(${config.SILVER[0]}, ${config.SILVER[1]}, ${config.SILVER[2]})`;
+        for (const p of pts) {
+          const ix = Math.floor(p.x);
+          const iy = Math.floor(p.y);
+          if (ix >= 0 && ix < config.LOGICAL_W && iy >= 0 && iy < config.LOGICAL_H) {
+            ctx.fillRect(ix, iy, 1, 1);
+          }
         }
       }
-    }
 
-    drawMap(ctx, this.map, {
-      asteroid: this.asteroid,
-      trail: this.trail,
-      pulsePhase: this.pulsePhase,
+      drawMap(ctx, this.map, {
+        asteroid: this.asteroid,
+        trail: this.trail,
+        pulsePhase: this.pulsePhase,
+      });
+
+      // Linger banner
+      if (this.phase === Phase.IN_FLIGHT && this.asteroid && !this.asteroid.alive && this.lastResult !== null) {
+        const map: Partial<Record<RoundEnd, [string, config.Color]>> = {
+          [RoundEnd.SCORED]: ["GOAL!", config.YELLOW],
+          [RoundEnd.CRASHED]: ["CRASHED", config.RED],
+          [RoundEnd.HARD_TIMEOUT]: ["TIMEOUT", config.SILVER],
+        };
+        const entry = map[this.lastResult] ?? ["END", config.SILVER as config.Color];
+        const [text, color] = entry;
+        drawText(ctx, text, config.LOGICAL_W / 2, config.HUD_H + 60, {
+          size: 28, bold: true, color, align: "center", shadow: true,
+        });
+      }
+
+      if (!TOUCH.active) {
+        const hint = this.phase === Phase.IN_FLIGHT
+          ? "SPACE/A reset   ESC menu"
+          : "SPACE fire   N new   L handmap   T preview   G field   ESC menu";
+        drawText(ctx, hint, 4, config.LOGICAL_H - 14, { size: 11, color: config.SILVER });
+      }
     });
 
-    // Linger banner
-    if (this.phase === Phase.IN_FLIGHT && this.asteroid && !this.asteroid.alive && this.lastResult !== null) {
-      const map: Partial<Record<RoundEnd, [string, config.Color]>> = {
-        [RoundEnd.SCORED]: ["GOAL!", config.YELLOW],
-        [RoundEnd.CRASHED]: ["CRASHED", config.RED],
-        [RoundEnd.HARD_TIMEOUT]: ["TIMEOUT", config.SILVER],
-      };
-      const entry = map[this.lastResult] ?? ["END", config.SILVER as config.Color];
-      const [text, color] = entry;
-      drawText(ctx, text, config.LOGICAL_W / 2, config.HUD_H + 60, {
-        size: 28, bold: true, color, align: "center", shadow: true,
+    if (TOUCH.active) {
+      drawHudBand(ctx, this.touchFrame.panels);
+      drawReadouts(ctx, this.touchFrame.readouts, {
+        angle: { text: `${Math.round(this.aim.angleDeg)}°`, color: config.WHITE },
+        power: { text: `${this.aim.powerPct}%`, color: config.WHITE },
+        level: { text: `L${this.map.level}`, color: config.WHITE },
       });
+    } else {
+      withHudBar(ctx, () =>
+        drawHUD(ctx, {
+          title: `TRAINING  L${this.map.level}`,
+          angleDeg: this.aim.angleDeg,
+          powerPct: this.aim.powerPct,
+          score: 0,
+          lives: null,
+          level: null,
+          extra: this.previewOn ? "preview ON" : "preview OFF",
+        }),
+      );
     }
-
-    const hint = this.phase === Phase.IN_FLIGHT
-      ? "SPACE/A reset   ESC menu"
-      : "SPACE fire   N new   L handmap   T preview   G field   ESC menu";
-    drawText(ctx, hint, 4, config.LOGICAL_H - 14, { size: 11, color: config.SILVER });
   }
 }

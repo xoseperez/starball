@@ -9,6 +9,9 @@ import {
 } from "../persistence";
 import { SETTINGS } from "../settings_store";
 import { drawText } from "../render";
+import { TOUCH } from "../touch/mode";
+import { highscoresLayout } from "../touch/layout-menus";
+import type { TouchContext, TouchLayout } from "../touch/controls";
 import { Scene, type InputEvent } from "./base";
 
 const DIFFICULTIES: readonly DifficultyCurve[] = ["gentle", "normal", "hard"];
@@ -55,6 +58,10 @@ export class HighscoresScene extends Scene {
     }
   }
 
+  override touchLayout(t: TouchContext): TouchLayout {
+    return highscoresLayout(this.mode === "endless", t.backPending);
+  }
+
   private async toMenu(): Promise<void> {
     const { MenuScene } = await import("./menu");
     this.nextScene = new MenuScene();
@@ -72,7 +79,7 @@ export class HighscoresScene extends Scene {
     if (this.mode === "endless") {
       drawText(
         ctx,
-        `< ${this.difficulty.toUpperCase()} >`,
+        TOUCH.active ? this.difficulty.toUpperCase() : `< ${this.difficulty.toUpperCase()} >`,
         config.LOGICAL_W / 2,
         62,
         { size: 16, bold: true, color: config.PALE_CYAN, align: "center" },
@@ -99,11 +106,13 @@ export class HighscoresScene extends Scene {
     drawText(ctx, sourceLabel, config.LOGICAL_W / 2, config.LOGICAL_H - 42, {
       size: 11, color: config.SILVER, align: "center",
     });
-    const hint = this.mode === "endless"
-      ? "[←→] difficulty   [ENTER/ESC] back"
-      : "[ENTER/ESC] back";
-    drawText(ctx, hint, config.LOGICAL_W / 2, config.LOGICAL_H - 24, {
-      size: 11, color: config.SILVER, align: "center",
-    });
+    if (!TOUCH.active) {
+      const hint = this.mode === "endless"
+        ? "[←→] difficulty   [ENTER/ESC] back"
+        : "[ENTER/ESC] back";
+      drawText(ctx, hint, config.LOGICAL_W / 2, config.LOGICAL_H - 24, {
+        size: 11, color: config.SILVER, align: "center",
+      });
+    }
   }
 }

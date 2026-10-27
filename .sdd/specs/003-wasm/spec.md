@@ -58,7 +58,7 @@ Portal constraints (from `alpheratz/webapps/nginx/default.conf.template` and `co
 - The portal adds a web manifest when the app ships none; an icon is given by URL or by a path inside the site.
 
 Native-readiness:
-- Web-only APIs (canvas, Web Audio, `localStorage`, DOM keyboard and pointer events, the media queries that detect touch devices, the History API used for system Back, the Fullscreen API) are isolated behind a platform layer so the core and game crates also compile for a native target.
+- Web-only APIs (canvas, Web Audio, `localStorage`, DOM keyboard and pointer events, the media queries that detect touch devices, the History API used for system Back) are isolated behind a platform layer so the core and game crates also compile for a native target.
 
 ## Requirements contract
 
