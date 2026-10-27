@@ -1,8 +1,10 @@
 # Starball — agent hub
 
+<!-- sdd:base=.sdd -->
+
 You are working on Starball, a TypeScript browser game (gravity-puzzle / Pocket-Tanks-style) that also ships a Node + SQLite backend for shared high scores. SPA and API are served from the same container; the server's replay validator imports the same physics/scoring modules the client runs.
 
-Start here. Deep references live under `docs/` and `specs/`.
+Start here. Deep references live under `.sdd/`.
 
 ## 1. Commands
 
@@ -43,12 +45,12 @@ starball/
 ├── AGENTS.md             ← you are here (hub)
 ├── CLAUDE.md             ← pointer to this file
 ├── README.md             ← public-facing
-├── .claude/              ← slash commands + permissions (settings.local.json is ignored)
-├── ai/                   ← all AI-harness material
+├── .claude/              ← shared permissions (settings.local.json is ignored)
+├── .sdd/                 ← all AI-harness material
 │   ├── architecture.md   ← stable steering
 │   ├── conventions.md
 │   ├── constitution.md
-│   └── specs/            ← per-feature folders (spec.md / plan.md / review.md / tasks.md)
+│   └── specs/            ← per-feature folders (spec.md / plan.md / review-request.md / review-response.md / tasks.md)
 │       ├── 001-initial-game/
 │       └── 002-…
 ├── src/                  ← frontend + shared physics/scoring/mapgen modules
@@ -58,7 +60,7 @@ starball/
 └── package.json, vite.config.ts, tsconfig.json, vitest.config.ts
 ```
 
-See `ai/architecture.md` for the topology and the SPA/API boundary in more detail.
+See `.sdd/architecture.md` for the topology and the SPA/API boundary in more detail.
 
 ## 4. Code style
 
@@ -70,7 +72,7 @@ See `ai/architecture.md` for the topology and the SPA/API boundary in more detai
 - Default to **zero comments**. Add one only when the WHY is non-obvious.
 - Shared modules under `src/` (physics, scoring, mapgen) are imported by *both* client and server — don't fork them.
 
-Full details: `ai/conventions.md`.
+Full details: `.sdd/conventions.md`.
 
 ## 5. Git workflow
 
@@ -83,7 +85,7 @@ Full details: `ai/conventions.md`.
 
 ## 6. Boundaries
 
-Hard rules from `ai/constitution.md`. Bending any of these requires an explicit decision in a feature's `review.md`:
+Hard rules from `.sdd/constitution.md`. Bending any of these requires an explicit decision in a feature's `review-response.md`:
 
 - The server's replay validator MUST run the same physics/scoring/mapgen code as the client. Don't fork shared modules.
 - No PNG/JPG/WAV/MP3/TTF in the repo. Procedural sprites + synthesized audio only.
@@ -94,18 +96,19 @@ Hard rules from `ai/constitution.md`. Bending any of these requires an explicit 
 
 ## Where to find what
 
-- **What the game is** → `ai/specs/001-initial-game/prd.md`
-- **Open task list** → `ai/specs/001-initial-game/tasks.md`
-- **Active feature work** → `ai/specs/NNN-…/` folders
-- **System topology** → `ai/architecture.md`
-- **Coding standards** → `ai/conventions.md`
-- **Non-negotiables** → `ai/constitution.md`
+- **What the game is** → `.sdd/specs/001-initial-game/prd.md`
+- **Open task list** → `.sdd/specs/001-initial-game/tasks.md`
+- **Active feature work** → `.sdd/specs/NNN-…/` folders
+- **System topology** → `.sdd/architecture.md`
+- **Coding standards** → `.sdd/conventions.md`
+- **Non-negotiables** → `.sdd/constitution.md`
 - **Backend anti-cheat** → `server/src/security.ts` + `server/src/replay.ts`
 - **Test invariants** → `tests/`
 
 ## Workflow for a new feature
 
-1. `/specify <slug>` → creates `ai/specs/NNN-<slug>/spec.md`, fills it interactively.
-2. `/plan NNN-<slug>` → drafts `plan.md` after reading the spec and grounding in code.
-3. `/review NNN-<slug>` → drafts `review.md` (assumptions challenged, alternatives considered, risks accepted). **This is the human gate before code is written.**
-4. After sign-off, implement; track progress in `ai/specs/NNN-<slug>/tasks.md`.
+1. `/sdd:specify <slug>` → creates `.sdd/specs/NNN-<slug>/spec.md`, fills it interactively.
+2. `/sdd:plan NNN-<slug>` → drafts `plan.md` after reading the spec and grounding in code.
+3. `/sdd:check NNN-<slug>` → runs a soft readiness audit of requirement coverage and verification evidence before requesting review.
+4. `/sdd:review-request NNN-<slug>` → drafts `review-request.md`: a prompt for an **independent third-party agent** to read the spec/plan/constitution and produce `review-response.md`. **Human gate before code is written.**
+5. Back in the original session, process `review-response.md`: update `spec.md` / `plan.md` / `tasks.md` as needed, then implement; track progress in `.sdd/specs/NNN-<slug>/tasks.md`.
